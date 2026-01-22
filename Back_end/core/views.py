@@ -26,7 +26,7 @@ def sync_media_files():
     # 如果 media 資料夾不存在，就建立它
     if not os.path.exists(media_root):
         os.makedirs(media_root)
-        return
+        # return  <-- 移除此行，讓建立資料夾後也能繼續往下執行 (雖然空資料夾不會掃到東西，但邏輯較一致)
 
     # 取得目前歷史紀錄中已有的檔名
     known_files = {item['name'] for item in state['history']}
@@ -177,6 +177,8 @@ def login_view(request):
             user = authenticate(request, username=username, password=password)
             if user is not None:
                 login(request, user)
+                # 登入成功後，立刻同步一次 media 檔案，確保歷史紀錄是最新的
+                sync_media_files()
                 return JsonResponse({"status": "success", "message": "Login successful"})
             else:
                 return JsonResponse({"status": "fail", "message": "Invalid credentials"}, status=401)
