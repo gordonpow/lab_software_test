@@ -21,33 +21,55 @@
 ### 資料處理流程圖
 
 ```mermaid
-graph TD
-    subgraph Frontend [前端 Frontend]
-        App[Front_end/src/App.js]
-        Canvas[Front_end/src/components]
+graph LR
+    %% Styles
+    classDef frontend fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#01579b;
+    classDef backend fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#2e7d32;
+    classDef database fill:#fff3e0,stroke:#ef6c00,stroke-width:2px,color:#ef6c00;
+    classDef file fill:#f5f5f5,stroke:#616161,stroke-width:1px,stroke-dasharray: 5 5;
+    classDef transparent fill:none,stroke:none,color:#333;
+
+    %% Main Layout: Left (App System) -> Right (Data System)
+    subgraph AppSystem [🖥️ 應用程式系統 Application System]
+        direction TB
+        
+        subgraph Frontend [前端 Frontend]
+            direction TB
+            App[Front_end/src/App.js]:::frontend
+            Canvas[Front_end/src/components]:::frontend
+        end
+        
+        %% Invisible link to force Frontend above Backend if needed, 
+        %% but TB direction usually handles it.
+        
+        subgraph Backend [後端 Backend]
+            direction TB
+            Consumer[Back_end/core/consumers.py]:::backend
+            Views[Back_end/core/views.py]:::backend
+            Model[Back_end/yolov8n.pt]:::file
+        end
     end
 
-    subgraph Backend [後端 Backend]
-        Consumer[Back_end/core/consumers.py]
-        Views[Back_end/core/views.py]
-        Model[Back_end/yolov8n.pt]
-    end
-
-    subgraph Database [資料庫 Database]
-        DB[Back_end/db.sqlite3]
-        Media[Back_end/media]
+    subgraph DataSystem [💾 資料集與資料庫 Dataset & DB]
+        direction TB
+        DB[Back_end/db.sqlite3]:::database
+        Media[Back_end/media]:::database
     end
 
     %% Data Flow Connections
+    %% Frontend <-> Backend
     App -->|"Base64 Image / Video Frame"| Consumer
+    Consumer -->|"JSON Detection Result"| App
+    App -->|"User Data / Uploads"| Views
+    App -->|"Draw Command"| Canvas
+
+    %% Backend Internal
     Consumer -->|"Numpy Array"| Model
     Model -->|"Detections (BBox, Class)"| Consumer
-    Consumer -->|"JSON Detection Result"| App
-    
-    App -->|"User Data / Uploads"| Views
+
+    %% Backend <-> Database (Left to Right Flow)
     Views -->|"User Info / Logs"| DB
     Media -.->|"Video File Stream"| Consumer
-    App -->|"Draw Command"| Canvas
 ```
 ### 技術堆疊 (Tech Stack)
 
