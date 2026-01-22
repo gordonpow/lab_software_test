@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <title>AI VISION PRO | 核心監控系統</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        .sidebar {
+            height: 100vh;
+            background: #1e293b;
+            border-right: 1px solid #334155;
+            position: fixed;
+            width: 250px;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 40px;
+        }
+
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 15px;
+            color: white;
+        }
+
+        .video-box {
+            width: 100%;
+            border-radius: 10px;
+            border: 3px solid #38bdf8;
+        }
+
+        .nav-link {
+            color: #94a3b8;
+            cursor: pointer;
+        }
+
+        .nav-link.active {
+            color: #38bdf8;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="sidebar p-4">
+        <h3 class="text-info mb-5">AI VISION PRO</h3>
+        <ul class="nav flex-column">
+            <li class="nav-item mb-3"><a class="nav-link active" onclick="showPage('video-lab')">影片分析實驗室</a></li>
+            <li class="nav-item mb-3"><a class="nav-link" onclick="showPage('live-monitor')">實時鏡頭監測</a></li>
+        </ul>
+        <div class="mt-5">
+            {% if user.is_authenticated %}
+            <div class="text-white mb-2">Welcome, {{ user.username }}</div>
+            <button onclick="logout()" class="btn btn-outline-danger btn-sm w-100 mb-2">登出</button>
+            <a href="/profile/" class="btn btn-outline-info btn-sm w-100 mb-2">個人設定</a>
+            <button onclick="deleteAccount()" class="btn btn-danger btn-sm w-100">刪除帳號</button>
+            {% else %}
+            <a href="/login/" class="btn btn-outline-info btn-sm w-100 mb-2">登入</a>
+            <a href="/register/" class="btn btn-outline-secondary btn-sm w-100">註冊</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div id="video-lab" class="page">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>影片分析儀 <small class="text-secondary fs-6">Video Analysis Lab</small></h2>
+                <form action="/upload/" method="post" enctype="multipart/form-data" class="d-flex">
+                    {% csrf_token %}
+                    <input type="file" name="video" class="form-control form-control-sm me-2">
+                    <button type="submit" class="btn btn-info btn-sm">上傳資料</button>
+                </form>
+            </div>
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card p-3">
+                        <img src="/video/" class="video-box" id="stream-img">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card p-3 mb-3">
+                        <h5>實時統計數據</h5>
+                        <div id="stats-table">讀取中...</div>
+                    </div>
+                    <div class="card p-3">
+                        <h5>歷史紀錄</h5>
+                        <ul id="history-list" class="list-group list-group-flush"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 定期獲取數據 (重點 7)
+        async function updateStats() {
+            const response = await fetch('/get_count/');
+            const data = await response.json();
+
+            // 更新表格
+            let tableHtml = '<table class="table table-dark table-sm"><thead><tr><th>物體</th><th>數量</th></tr></thead><tbody>';
+            for (const [name, count] of Object.entries(data.all_detections)) {
+                tableHtml += `<tr><td>${name}</td><td>${count}</td></tr>`;
+            }
+            tableHtml += '</tbody></table>';
+            document.getElementById('stats-table').innerHTML = tableHtml;
+        }
+
+        // 獲取歷史紀錄
+        async function updateHistory() {
+            const response = await fetch('/history/');
+            const data = await response.json();
+            const list = document.getElementById('history-list');
+            list.innerHTML = data.history.map(item =>
+                `<li class="list-group-item bg-transparent text-white d-flex justify-content-between align-items-center">
+                ${item.name} <button class="btn btn-danger btn-sm" onclick="deleteItem(${item.id})">刪除</button>
+            </li>`
+            ).join('');
+        }
+
+        async function logout() {
+            try {
+                const response = await fetch('/logout/', { method: 'POST' });
+                const data = await response.json();
+                if (data.status === 'success') {
+                    window.location.reload();
+                } else {
+                    alert('登出失敗');
+                }
+            } catch (err) {
+                alert('系統錯誤');
+            }
+        }
+
+        async function deleteAccount() {
+            if (!confirm('確定要刪除帳號嗎？此動作無法復原。')) return;
+            try {
+                const response = await fetch('/delete_account/', { method: 'DELETE' });
+                const data = await response.json();
+                if (data.status === 'success') {
+                    alert('帳號已刪除');
+                    window.location.reload();
+                } else {
+                    alert('刪除失敗: ' + (data.message || '未知錯誤'));
+                }
+            } catch (err) {
+                alert('系統錯誤');
+            }
+        }
+
+        setInterval(updateStats, 2000); // 使用者可自訂秒數，這裡設為 2 秒
+        updateHistory();
+    </script>
+</body>
+
+</html>
