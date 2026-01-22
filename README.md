@@ -37,6 +37,8 @@ graph LR
             direction TB
             App[Front_end/src/App.js]:::frontend
             Canvas[Front_end/src/components]:::frontend
+            Login[Front_end/src/components/LoginRegister.js]:::frontend
+            Profile[Front_end/src/components/UserProfile.js]:::frontend
         end
         
         %% Invisible link to force Frontend above Backend if needed, 
@@ -60,6 +62,13 @@ graph LR
     %% Frontend <-> Backend
     App -->|"Base64 Image / Video Frame"| Consumer
     Consumer -->|"JSON Detection Result"| App
+    
+    %% Auth & Profile Flow
+    App -.->|"Route / Render"| Login
+    App -.->|"Route / Render"| Profile
+    Login -->|"Auth Request (Login/Register)"| Views
+    Profile -->|"Update Profile"| Views
+    
     App -->|"User Data / Uploads"| Views
     App -->|"Draw Command"| Canvas
 
@@ -80,6 +89,20 @@ graph LR
 * **Containerization**: Docker & Docker Compose.
 
 ---
+
+## 🔌 API 介面說明 (API Reference)
+
+以下列出本系統之主要功能模組與其對應的程式實作細節：
+
+| 檔案 (File)                                            | 功能模組 (Function)                                 | 輸入 (Input)                                       | 輸出 (Output)                                            | 處理邏輯 (Processing)                                                   | 架構 (Architecture)                                        |
+| :----------------------------------------------------- | :-------------------------------------------------- | :------------------------------------------------- | :------------------------------------------------------- | :---------------------------------------------------------------------- | :--------------------------------------------------------- |
+| `Front_end/src/App.js`                                 | **主控台/即時影像**<br>(Dashboard)                  | User Interaction,<br>WebSocket Stream              | Canvas Draw,<br>UI Updates                               | 1. 擷取 Webcam/Canvas<br>2. 傳送 Base64 至後端<br>3. 接收偵測結果並繪圖 | React Functional Component<br>(Hooks: useState, useEffect) |
+| `Front_end/src/components/LoginRegister.js`            | **登入/註冊介面**<br>(Auth UI)                      | Username, Password                                 | API Request<br>(Login/Register)                          | 1. 表單驗證<br>2. 呼叫後端 Auth API<br>3. 儲存登入狀態                  | React Component<br>(Forms)                                 |
+| `Front_end/src/components/UserProfile.js`              | **個人資料管理**<br>(User Profile)                  | New Password/Email                                 | API Request<br>(Update Profile)                          | 1. 顯示使用者資訊<br>2. 編輯與送出修改<br>3. 處理後端回應               | React Component                                            |
+| `Back_end/core/consumers.py`<br>(`VideoConsumer`)      | **WebSocket 即時影像推論**<br>(Real-time Inference) | JSON<br>`{ "image": "base64..." }`                 | JSON<br>`{ "detections": [...], "all_counts": {...} }`   | 1. Base64 解碼 -> OpenCV<br>2. YOLOv8 推論<br>3. 計算物件數量           | Django Channels<br>(Async WebSocket)                       |
+| `Back_end/core/views.py`<br>(`get_history`)            | **歷史紀錄管理**<br>(History Management)            | HTTP GET                                           | JSON<br>`{ "history": [...] }`                           | 1. 掃描 `media` 資料夾<br>2. 自動同步並補漏<br>3. 依時間排序回傳        | Django View<br>(Function-based)                            |
+| `Back_end/core/views.py`<br>(`upload_video`)           | **影片上傳**<br>(Video Upload)                      | HTTP POST<br>(Multipart/form-data)<br>Key: `video` | JSON<br>`{ "status": "success", "record": {...} }`       | 1. `FileSystemStorage` 存檔<br>2. 建立資料庫紀錄<br>3. 回傳成功狀態     | Django<br>File Upload Handler                              |
+| `Back_end/core/views.py`<br>(`login_view`, `register`) | **使用者認證**<br>(User Authentication)             | JSON<br>`{ "username": "...", "password": "..." }` | JSON<br>`{ "status": "success/fail", "message": "..." }` | 1. 解析 JSON<br>2. `authenticate()` 驗證<br>3. `login()` 建立 Session   | Django Auth System                                         |
 
 ## ⚡ 核心功能 (Features)
 
